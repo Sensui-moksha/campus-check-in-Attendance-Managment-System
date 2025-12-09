@@ -513,5 +513,4 @@ For licensing inquiries, please contact the author.
 <p align="center">
   ⭐ Star this repo if you find it helpful!
 </p>
-#   c a m p u s - c h e c k - i n - A t t e n d a n c e - M a n a g m e n t - S y s t e m  
- 
+#
