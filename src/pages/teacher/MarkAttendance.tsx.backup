@@ -1,0 +1,493 @@
+import { useEffect, useState } from 'react';
+import { DashboardLayout } from '@/components/layout/DashboardLayout';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { useAuth } from '@/contexts/AuthContext';
+import { api } from '@/api';
+import { useToast } from '@/hooks/use-toast';
+
+interface Department {
+  _id: string;
+  name: string;
+  code: string;
+}
+
+interface Section {
+  _id: string;
+  name: string;
+  yearOfStudy?: number;
+}
+
+interface Subject {
+  _id: string;
+  code: string;
+  name: string;
+  yearOfStudy: number;
+  semester: number;
+  section?: Section;
+  sectionAssignments?: Array<{ teacher?: { _id: string } }>;
+}
+
+interface Student {
+  _id: string;
+  name: string;
+  rollNo: string;
+  email: string;
+}
+
+const statusIcons: Record<string, string> = {
+  present: '✓',
+  absent: '✗',
+  late: '⏰',
+  leave: '📋',
+};
+
+interface StudentAttendance {
+  studentId: string;
+  status: 'present' | 'absent' | 'late' | 'leave';
+}
+
+export default function TeacherMarkAttendance() {
+  const { user } = useAuth();
+  const { toast } = useToast();
+  
+  // State for hierarchical selection
+  const [departments, setDepartments] = useState<Department[]>([]);
+  const [selectedDept, setSelectedDept] = useState<string>('');
+  
+  const [years, setYears] = useState<number[]>([]);
+  const [selectedYear, setSelectedYear] = useState<string>('');
+  
+  const [sections, setSections] = useState<string[]>([]);
+  const [selectedSection, setSelectedSection] = useState<string>('');
+  
+  const [subjects, setSubjects] = useState<Subject[]>([]);
+  const [selectedSubject, setSelectedSubject] = useState<Subject | null>(null);
+  
+  // State for students and attendance
+  const [students, setStudents] = useState<Student[]>([]);
+  const [attendance, setAttendance] = useState<Record<string, StudentAttendance>>({});
+  const [isLoading, setIsLoading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Load departments on mount
+  useEffect(() => {
+    const loadDepartments = async () => {
+      try {
+        const response = await api.departments.list();
+        const depts = response.data?.departments || [];
+        setDepartments(depts);
+      } catch (error) {
+        console.error('Failed to load departments:', error);
+        toast({
+          description: 'Failed to load departments',
+          variant: 'destructive',
+        });
+      }
+    };
+    loadDepartments();
+  }, []);
+
+  // Load years when department is selected
+  useEffect(() => {
+    if (!selectedDept) {
+      setYears([]);
+      setSelectedYear('');
+      setSections([]);
+      setSelectedSection('');
+      setSubjects([]);
+      setSelectedSubject(null);
+      return;
+    }
+
+    const loadYears = async () => {
+      try {
+        const response = await api.subjects.list({ departmentId: selectedDept });
+        const uniqueYears = Array.from(
+          new Set((response.data?.subjects || []).map((s: Subject) => s.yearOfStudy))
+        ).sort() as number[];
+        setYears(uniqueYears);
+        setSelectedYear('');
+        setSections([]);
+        setSelectedSection('');
+        setSubjects([]);
+        setSelectedSubject(null);
+      } catch (error) {
+        console.error('Failed to load years:', error);
+      }
+    };
+    loadYears();
+  }, [selectedDept]);
+
+  // Load sections when year is selected
+  useEffect(() => {
+    if (!selectedDept || !selectedYear) {
+      setSections([]);
+      setSelectedSection('');
+      setSubjects([]);
+      setSelectedSubject(null);
+      return;
+    }
+
+    const loadSections = async () => {
+      try {
+        const response = await api.subjects.list({ 
+          departmentId: selectedDept,
+          yearOfStudy: selectedYear 
+        });
+        
+        // Extract sections from sectionAssignments
+        const sectionSet = new Set<string>();
+        (response.data?.subjects || []).forEach((subject: Subject) => {
+          if (subject.sectionAssignments && Array.isArray(subject.sectionAssignments)) {
+            subject.sectionAssignments.forEach((assignment: any) => {
+              if (assignment.section && assignment.section.name) {
+                sectionSet.add(assignment.section.name);
+              }
+            });
+          }
+          // Also check direct section property for backward compatibility
+          if (subject.section && subject.section.name) {
+            sectionSet.add(subject.section.name);
+          }
+        });
+        
+        const uniqueSections = Array.from(sectionSet).sort();
+        setSections(uniqueSections);
+        setSelectedSection('');
+        setSubjects([]);
+        setSelectedSubject(null);
+      } catch (error) {
+        console.error('Failed to load sections:', error);
+      }
+    };
+    loadSections();
+  }, [selectedDept, selectedYear]);
+
+  // Load subjects when section is selected
+  useEffect(() => {
+    if (!selectedDept || !selectedYear || !selectedSection) {
+      setSubjects([]);
+      setSelectedSubject(null);
+      return;
+    }
+
+    const loadSubjects = async () => {
+      try {
+        setIsLoading(true);
+        const response = await api.subjects.list({ 
+          departmentId: selectedDept,
+          yearOfStudy: selectedYear 
+        });
+        
+        // Filter by section and teacher assignment
+        const filteredSubjects = (response.data?.subjects || []).filter(
+          (subject: Subject) => {
+            // Check if this subject has section assignments matching our criteria
+            if (!subject.sectionAssignments || !Array.isArray(subject.sectionAssignments)) {
+              return false;
+            }
+            
+            return subject.sectionAssignments.some((assignment: any) => 
+              // Check if section matches
+              assignment.section && assignment.section.name === selectedSection &&
+              // Check if teacher is assigned
+              assignment.teacher && assignment.teacher._id === user?._id
+            );
+          }
+        );
+        
+        setSubjects(filteredSubjects);
+        setSelectedSubject(null);
+      } catch (error) {
+        console.error('Failed to load subjects:', error);
+        toast({
+          description: 'Failed to load subjects',
+          variant: 'destructive',
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    loadSubjects();
+  }, [selectedDept, selectedYear, selectedSection]);
+
+  // Fetch students when subject is selected
+  useEffect(() => {
+    const fetchStudents = async () => {
+      if (!selectedSubject) {
+        setStudents([]);
+        setAttendance({});
+        return;
+      }
+
+      try {
+        setIsLoading(true);
+        const response = await api.subjects.get(selectedSubject._id);
+        if (response.data?.students) {
+          setStudents(response.data.students);
+          const initialAttendance: Record<string, StudentAttendance> = {};
+          response.data.students.forEach((student: Student) => {
+            initialAttendance[student._id] = {
+              studentId: student._id,
+              status: 'present',
+            };
+          });
+          setAttendance(initialAttendance);
+        }
+      } catch (error) {
+        console.error('Failed to fetch students:', error);
+        toast({
+          description: 'Failed to load students',
+          variant: 'destructive',
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchStudents();
+  }, [selectedSubject]);
+
+  const handleStatusChange = (studentId: string, status: 'present' | 'absent' | 'late' | 'leave') => {
+    setAttendance(prev => ({
+      ...prev,
+      [studentId]: {
+        ...prev[studentId],
+        status,
+      },
+    }));
+  };
+
+  const handleSubmit = async () => {
+    if (!selectedSubject) return;
+
+    try {
+      setIsSubmitting(true);
+      const attendanceData = Object.values(attendance);
+      await api.attendance.markSubjectAttendance({
+        subjectId: selectedSubject._id,
+        sectionId: selectedSubject.section?._id || '',
+        departmentId: selectedDept,
+        date: new Date(),
+        records: attendanceData,
+      });
+
+      toast({
+        description: 'Attendance marked successfully',
+      });
+
+      setSelectedSubject(null);
+      setStudents([]);
+      setAttendance({});
+    } catch (error) {
+      console.error('Failed to mark attendance:', error);
+      toast({
+        description: 'Failed to mark attendance',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <DashboardLayout>
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-3xl font-bold">Mark Attendance</h1>
+          <p className="text-muted-foreground mt-2">Select department → year → section → subject</p>
+        </div>
+
+        {/* Selection Hierarchy */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Select Subject</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {/* Department Selection */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Department</label>
+              <Select value={selectedDept} onValueChange={setSelectedDept}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select department" />
+                </SelectTrigger>
+                <SelectContent>
+                  {departments.map(dept => (
+                    <SelectItem key={dept._id} value={dept._id}>
+                      {dept.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Year Selection */}
+            {selectedDept && (
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Year of Study</label>
+                <Select value={selectedYear} onValueChange={setSelectedYear}>
+                  <SelectTrigger disabled={!selectedDept}>
+                    <SelectValue placeholder="Select year" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {years.map(year => (
+                      <SelectItem key={year} value={String(year)}>
+                        Year {year}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {/* Section Selection */}
+            {selectedYear && (
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Section</label>
+                <Select value={selectedSection} onValueChange={setSelectedSection}>
+                  <SelectTrigger disabled={!selectedYear}>
+                    <SelectValue placeholder="Select section" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {sections.map(section => (
+                      <SelectItem key={section} value={section}>
+                        Section {section}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {/* Subject Selection */}
+            {selectedSection && (
+              <>
+                {console.log('Subjects:', subjects, 'Selected:', selectedSubject)}
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Subject</label>
+                  <Select 
+                    value={selectedSubject?._id || ''} 
+                    onValueChange={(id) => {
+                      const subject = subjects.find(s => s._id === id);
+                      setSelectedSubject(subject || null);
+                    }}
+                  >
+                    <SelectTrigger disabled={isLoading}>
+                      <SelectValue placeholder={isLoading ? 'Loading...' : 'Select subject'} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {subjects.map(subject => (
+                        <SelectItem key={subject._id} value={subject._id}>
+                          {subject.code} - {subject.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {subjects.length === 0 && selectedSection && !isLoading && (
+                    <p className="text-sm text-muted-foreground">No subjects found for this selection</p>
+                  )}
+                </div>
+              </>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Mark Attendance Table */}
+        {selectedSubject && (
+          <Card>
+            <CardHeader>
+              <CardTitle>
+                {selectedSubject.name} ({selectedSubject.code}) - Mark Attendance
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {isLoading ? (
+                <p className="text-muted-foreground">Loading students...</p>
+              ) : students.length === 0 ? (
+                <p className="text-muted-foreground">No students in this subject</p>
+              ) : (
+                <div className="space-y-4">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Roll No</TableHead>
+                        <TableHead>Name</TableHead>
+                        <TableHead>Email</TableHead>
+                        <TableHead>Status</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {students.map(student => (
+                        <TableRow key={student._id}>
+                          <TableCell>{student.rollNo}</TableCell>
+                          <TableCell>{student.name}</TableCell>
+                          <TableCell>{student.email}</TableCell>
+                          <TableCell>
+                            <div className="flex gap-2">
+                              {(['present', 'absent', 'late', 'leave'] as const).map(status => (
+                                <Button
+                                  key={status}
+                                  size="sm"
+                                  variant={
+                                    attendance[student._id]?.status === status
+                                      ? 'default'
+                                      : 'outline'
+                                  }
+                                  onClick={() => handleStatusChange(student._id, status)}
+                                >
+                                  {statusIcons[status]}
+                                </Button>
+                              ))}
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+
+                  <div className="flex gap-4">
+                    <Button
+                      onClick={handleSubmit}
+                      disabled={isSubmitting}
+                      className="flex-1"
+                    >
+                      {isSubmitting ? 'Saving...' : 'Save Attendance'}
+                    </Button>
+                    <Button
+                      onClick={() => {
+                        setSelectedSubject(null);
+                        setSelectedSection('');
+                        setSelectedYear('');
+                        setSelectedDept('');
+                      }}
+                      variant="outline"
+                      className="flex-1"
+                    >
+                      Reset
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
+      </div>
+    </DashboardLayout>
+  );
+}

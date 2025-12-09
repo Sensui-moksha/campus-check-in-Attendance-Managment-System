@@ -1,0 +1,20 @@
+/* App-specific styles */
+#root {
+  min-height: 100vh;
+  width: 100%;
+}
+
+/* Smooth transitions for interactive elements */
+button, a {
+  transition: all 0.2s ease-in-out;
+}
+
+/* Focus styles for accessibility */
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid hsl(var(--primary));
+  outline-offset: 2px;
+}

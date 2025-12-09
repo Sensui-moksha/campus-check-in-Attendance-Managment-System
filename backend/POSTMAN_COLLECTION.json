@@ -1,0 +1,614 @@
+{
+  "info": {
+    "name": "Campus Check-In Advanced Features",
+    "description": "API documentation for advanced features: validation, audit logging, RBAC, pagination, exports, timetable, analytics, bulk import, undo",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Authentication",
+      "item": [
+        {
+          "name": "Login",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"teacher@example.com\",\n  \"password\": \"password123\"\n}"
+            },
+            "url": {
+              "raw": "http://localhost:5000/api/auth/login",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "5000",
+              "path": ["api", "auth", "login"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Attendance & Undo",
+      "item": [
+        {
+          "name": "Mark Attendance (Bulk)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"records\": [\n    {\n      \"studentId\": \"60d5ec49c1234567890abcde\",\n      \"status\": \"present\"\n    },\n    {\n      \"studentId\": \"60d5ec49c1234567890abcdf\",\n      \"status\": \"absent\"\n    },\n    {\n      \"studentId\": \"60d5ec49c1234567890abce0\",\n      \"status\": \"late\"\n    },\n    {\n      \"studentId\": \"60d5ec49c1234567890abce1\",\n      \"status\": \"leave\"\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "http://localhost:5000/api/attendance/{{sessionId}}/mark",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "5000",
+              "path": ["api", "attendance", "{{sessionId}}", "mark"]
+            },
+            "description": "Mark attendance for multiple students in a session. Status values: present, absent, late, leave. Auth: teacher|hod|admin|principal. Returns 422 if validation fails."
+          }
+        },
+        {
+          "name": "Undo Last Attendance",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "http://localhost:5000/api/sessions/{{sessionId}}/undo-last",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "5000",
+              "path": ["api", "sessions", "{{sessionId}}", "undo-last"]
+            },
+            "description": "Undo the last attendance marking for a session. Auth: teacher|hod|admin|principal. Returns undo details and count of reverted records."
+          }
+        },
+        {
+          "name": "Get Undo History",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "http://localhost:5000/api/sessions/{{sessionId}}/undo-history",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "5000",
+              "path": ["api", "sessions", "{{sessionId}}", "undo-history"]
+            },
+            "description": "Get history of undo operations for a session. Auth: teacher|hod|admin|principal."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Bulk Import",
+      "item": [
+        {
+          "name": "Import Students (CSV)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": "/path/to/students.csv",
+                  "description": "CSV file with columns: name, email, rollNo. First row is treated as header."
+                },
+                {
+                  "key": "departmentId",
+                  "value": "60d5ec49c1234567890abcde",
+                  "type": "text"
+                },
+                {
+                  "key": "batchYear",
+                  "value": "2023",
+                  "type": "text"
+                }
+              ]
+            },
+            "url": {
+              "raw": "http://localhost:5000/api/imports/students",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "5000",
+              "path": ["api", "imports", "students"]
+            },
+            "description": "Import students via CSV file. Creates users with temporary passwords. Auth: admin|principal|hod. Returns created students list with temp passwords and error list."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Exports",
+      "item": [
+        {
+          "name": "Export Course Attendance",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "http://localhost:5000/api/exports/course/{{courseId}}?format=csv&from=2024-01-01&to=2024-01-31&batchYear=2023",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "5000",
+              "path": ["api", "exports", "course", "{{courseId}}"],
+              "query": [
+                {
+                  "key": "format",
+                  "value": "csv",
+                  "description": "Export format: csv, xlsx, pdf"
+                },
+                {
+                  "key": "from",
+                  "value": "2024-01-01",
+                  "description": "Start date (YYYY-MM-DD, optional)"
+                },
+                {
+                  "key": "to",
+                  "value": "2024-01-31",
+                  "description": "End date (YYYY-MM-DD, optional)"
+                },
+                {
+                  "key": "batchYear",
+                  "value": "2023",
+                  "description": "Filter by batch year (optional)"
+                },
+                {
+                  "key": "yearOfStudy",
+                  "value": "1",
+                  "description": "Filter by year of study 1-4 (optional)"
+                }
+              ]
+            },
+            "description": "Export course attendance in specified format. Auth: admin|principal|hod (own dept)|teacher (own course). Returns file attachment."
+          }
+        },
+        {
+          "name": "Export College Attendance",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "http://localhost:5000/api/exports/college?format=xlsx&from=2024-01-01&to=2024-01-31",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "5000",
+              "path": ["api", "exports", "college"],
+              "query": [
+                {
+                  "key": "format",
+                  "value": "xlsx",
+                  "description": "Export format: csv, xlsx, pdf"
+                },
+                {
+                  "key": "from",
+                  "value": "2024-01-01",
+                  "description": "Start date (optional)"
+                },
+                {
+                  "key": "to",
+                  "value": "2024-01-31",
+                  "description": "End date (optional)"
+                }
+              ]
+            },
+            "description": "Export college-wide attendance. Auth: admin|principal. Returns file attachment."
+          }
+        },
+        {
+          "name": "Export Department Attendance",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "http://localhost:5000/api/exports/department/{{departmentId}}?format=pdf",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "5000",
+              "path": ["api", "exports", "department", "{{departmentId}}"],
+              "query": [
+                {
+                  "key": "format",
+                  "value": "pdf",
+                  "description": "Export format: csv, xlsx, pdf"
+                }
+              ]
+            },
+            "description": "Export department attendance. Auth: admin|principal|hod (own dept). Returns file attachment."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Analytics",
+      "item": [
+        {
+          "name": "Get Course Summary",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "http://localhost:5000/api/analytics/courses/{{courseId}}/summary?from=2024-01-01&to=2024-01-31&batchYear=2023",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "5000",
+              "path": ["api", "analytics", "courses", "{{courseId}}", "summary"],
+              "query": [
+                {
+                  "key": "from",
+                  "value": "2024-01-01",
+                  "description": "Start date (optional)"
+                },
+                {
+                  "key": "to",
+                  "value": "2024-01-31",
+                  "description": "End date (optional)"
+                },
+                {
+                  "key": "batchYear",
+                  "value": "2023",
+                  "description": "Filter by batch year (optional)"
+                },
+                {
+                  "key": "yearOfStudy",
+                  "value": "1",
+                  "description": "Filter by year of study (optional)"
+                }
+              ]
+            },
+            "description": "Get analytics for a specific course. Returns per-student data and attendance trends. Auth: admin|principal|hod|teacher."
+          }
+        },
+        {
+          "name": "Get Department Summary",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "http://localhost:5000/api/analytics/departments/{{departmentId}}/summary?from=2024-01-01&to=2024-01-31",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "5000",
+              "path": ["api", "analytics", "departments", "{{departmentId}}", "summary"],
+              "query": [
+                {
+                  "key": "from",
+                  "value": "2024-01-01"
+                },
+                {
+                  "key": "to",
+                  "value": "2024-01-31"
+                }
+              ]
+            },
+            "description": "Get analytics for a department aggregated by year of study. Auth: admin|principal|hod."
+          }
+        },
+        {
+          "name": "Get College Summary",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "http://localhost:5000/api/analytics/college/summary?from=2024-01-01&to=2024-01-31",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "5000",
+              "path": ["api", "analytics", "college", "summary"],
+              "query": [
+                {
+                  "key": "from",
+                  "value": "2024-01-01"
+                },
+                {
+                  "key": "to",
+                  "value": "2024-01-31"
+                }
+              ]
+            },
+            "description": "Get college-wide analytics. Auth: admin|principal."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Timetable",
+      "item": [
+        {
+          "name": "Get Timetables",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "http://localhost:5000/api/timetable?courseId={{courseId}}&yearOfStudy=1&semester=1",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "5000",
+              "path": ["api", "timetable"],
+              "query": [
+                {
+                  "key": "courseId",
+                  "value": "{{courseId}}",
+                  "description": "Filter by course (optional)"
+                },
+                {
+                  "key": "yearOfStudy",
+                  "value": "1",
+                  "description": "Filter by year of study (optional)"
+                },
+                {
+                  "key": "semester",
+                  "value": "1",
+                  "description": "Filter by semester (optional)"
+                }
+              ]
+            },
+            "description": "Get active timetable entries with optional filters. Auth: teacher|hod|admin|principal."
+          }
+        },
+        {
+          "name": "Import Timetable (CSV)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": "/path/to/timetable.csv",
+                  "description": "CSV with columns: courseCode, dayOfWeek (0-6), startTime (HH:MM), endTime (HH:MM), semester (1-8), yearOfStudy (1-4)"
+                }
+              ]
+            },
+            "url": {
+              "raw": "http://localhost:5000/api/timetable/import",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "5000",
+              "path": ["api", "timetable", "import"]
+            },
+            "description": "Import timetable from CSV. Auth: admin|principal. Returns created timetables count and error list."
+          }
+        },
+        {
+          "name": "Generate Sessions",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"from\": \"2024-01-01\",\n  \"to\": \"2024-01-31\"\n}"
+            },
+            "url": {
+              "raw": "http://localhost:5000/api/timetable/{{timetableId}}/generate-sessions?batchYear=2023",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "5000",
+              "path": ["api", "timetable", "{{timetableId}}", "generate-sessions"],
+              "query": [
+                {
+                  "key": "batchYear",
+                  "value": "2023",
+                  "description": "Batch year for session generation (optional)"
+                }
+              ]
+            },
+            "description": "Generate class sessions from timetable for a date range. Avoids duplicates. Auth: admin|principal|hod. Returns generated count and session IDs."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Export Templates",
+      "item": [
+        {
+          "name": "Get All Templates",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "http://localhost:5000/api/admin/export-templates",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "5000",
+              "path": ["api", "admin", "export-templates"]
+            },
+            "description": "Get all export templates. Auth: admin only."
+          }
+        },
+        {
+          "name": "Create Template",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Monthly Department Report\",\n  \"description\": \"Monthly attendance report for department heads\",\n  \"scope\": \"department\",\n  \"columns\": [\n    \"yearOfStudy\",\n    \"courseName\",\n    \"totalStudents\",\n    \"presentCount\",\n    \"absentCount\",\n    \"attendancePercentage\"\n  ]\n}"
+            },
+            "url": {
+              "raw": "http://localhost:5000/api/admin/export-templates",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "5000",
+              "path": ["api", "admin", "export-templates"]
+            },
+            "description": "Create new export template. Scope options: course, department, college. Auth: admin only."
+          }
+        },
+        {
+          "name": "Delete Template",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "http://localhost:5000/api/admin/export-templates/{{templateId}}",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "5000",
+              "path": ["api", "admin", "export-templates", "{{templateId}}"]
+            },
+            "description": "Delete export template. Auth: admin only."
+          }
+        },
+        {
+          "name": "Export Using Template",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"templateId\": \"{{templateId}}\",\n  \"format\": \"csv\"\n}"
+            },
+            "url": {
+              "raw": "http://localhost:5000/api/exports/template/execute",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "5000",
+              "path": ["api", "exports", "template", "execute"]
+            },
+            "description": "Execute export using saved template. Format: csv, xlsx, pdf. Auth: admin|principal."
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "token",
+      "value": ""
+    },
+    {
+      "key": "sessionId",
+      "value": ""
+    },
+    {
+      "key": "courseId",
+      "value": ""
+    },
+    {
+      "key": "departmentId",
+      "value": ""
+    },
+    {
+      "key": "timetableId",
+      "value": ""
+    },
+    {
+      "key": "templateId",
+      "value": ""
+    }
+  ]
+}
