@@ -280,7 +280,7 @@ PORT=5000
 NODE_ENV=development
 
 # Database
-MONGODB_URI=mongodb://localhost:27017/campus_checkin
+MONGODB_URI=
 
 # Authentication
 JWT_SECRET=your_very_long_and_secure_secret_key_here
