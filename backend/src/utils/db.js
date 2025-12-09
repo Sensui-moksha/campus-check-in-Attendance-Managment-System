@@ -4,7 +4,6 @@ const config = require('../config');
 /**
  * Connect to MongoDB (Atlas or Local)
  * Connection string should be in MONGO_URI env var
- * Atlas format: mongodb+srv://user:password@cluster.mongodb.net/dbname?retryWrites=true&w=majority
  */
 exports.connectDB = async () => {
   try {
