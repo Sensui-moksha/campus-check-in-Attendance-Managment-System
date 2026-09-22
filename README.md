@@ -502,10 +502,10 @@ For licensing inquiries, please contact the author.
 
 ## 🙏 Acknowledgments
 
-- [shadcn/ui](https://ui.shadcn.com/) for beautiful UI components
-- [Tailwind CSS](https://tailwindcss.com/) for utility-first styling
-- [Radix UI](https://www.radix-ui.com/) for accessible primitives
-- [Lucide](https://lucide.dev/) for beautiful icons
+- [shadcn/ui](https://ui.shadcn.com/) for beautiful UI components.
+- [Tailwind CSS](https://tailwindcss.com/) for utility-first styling.
+- [Radix UI](https://www.radix-ui.com/) for accessible primitives.
+- [Lucide](https://lucide.dev/) for beautiful icons.
 
 ---
 
